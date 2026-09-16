@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Deadline — Game Test</title>
+    <link rel="stylesheet" href="HUD.css">
+    <style>
+        body { margin: 0; background: #0f0d17; display: flex; justify-content: center; align-items: center; height: 100vh; }
+
+        #game-container {
+            position: relative;
+            width: 800px;
+            height: 600px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <!-- Phaser injects its <canvas> in here -->
+        <div id="hud"></div>
+    </div>
+
+    <div id="dialogue-box" style="display:none; position:fixed; bottom:20px; left:50%; transform:translateX(-50%); width:600px; max-width:90vw; background:#1b1826; border:1px solid #302a41; border-radius:14px; padding:20px 24px; color:#f2eefb; font-family:sans-serif; z-index:10;">
+        <p id="dialogue-title" style="font-weight:700; font-size:17px; margin:0 0 8px;"></p>
+        <p id="dialogue-text" style="color:#d6d2e3; margin:0 0 14px; line-height:1.5;"></p>
+        <div id="dialogue-choices" style="display:flex; flex-direction:column; gap:8px;"></div>
+    </div>
+
+    <!-- Phaser first -->
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
+
+<script src="state.js"></script>
+<script src="memory.js"></script>
+<script src="world-art.js"></script>
+<script src="npcs.js"></script>
+<script src="polish.js"></script>
+<script src="HUD.js"></script>
+<script src="main.js"></script>
+
+</body>
+</html>

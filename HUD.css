@@ -1,0 +1,78 @@
+/* HUD overlay — sits on top of the Phaser canvas, ignores mouse events
+   so clicks still reach the game underneath. */
+
+#hud {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    z-index: 10;
+    pointer-events: none;
+    font-family: 'Inter', system-ui, sans-serif;
+    color: #f2eefb;
+    user-select: none;
+}
+
+.hud-day {
+    font-size: 13px;
+    font-weight: 600;
+    color: #ffd6a0;
+    margin-bottom: 8px;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+}
+
+.hud-bars {
+    background: rgba(15, 13, 23, 0.72);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    backdrop-filter: blur(4px);
+    min-width: 210px;
+}
+
+.hud-stat {
+    display: grid;
+    grid-template-columns: 82px 1fr 28px 34px;
+    align-items: center;
+    gap: 8px;
+}
+
+.hud-label { font-size: 11px; color: #b6b1c7; }
+
+.hud-bar {
+    height: 6px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.hud-bar-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 3px;
+    transition: width 0.45s ease, background 0.45s ease;
+}
+
+.hud-value { font-size: 12px; font-weight: 600; text-align: right; }
+
+.hud-money {
+    font-size: 12px;
+    font-weight: 600;
+    padding-top: 6px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+/* Floating +/- indicator */
+.hud-delta {
+    font-size: 11px;
+    font-weight: 700;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.hud-delta.show { opacity: 1; transform: translateY(0); }
+.hud-delta.up   { color: #4ade80; }
+.hud-delta.down { color: #f87171; }
