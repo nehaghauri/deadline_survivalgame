@@ -1,2 +1,2 @@
 # deadline_survivalgame
-ai/ml based gamee
+ai/ml based game
