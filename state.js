@@ -13,8 +13,18 @@ const gameState = {
     academics: 40,
     money: 500,
     day: 1,
+    streak: 0,     // consecutive days ending with every stat at 30+
+    score: 0,
+    combo: 0,      // consecutive good outcomes in a row — drives the score multiplier
+    aiWins: 0,     // times autopilot chose for you (you ran out of time)
+    humanWins: 0,  // times you deliberately picked against the prediction
     memories: []   // filled in later by the RAG step
 };
+
+// Power-up timers — plain globals so both arcade.js and main.js can read/set them
+// without needing to pass state through function calls everywhere.
+let speedBoostUntil = 0;
+let chaserImmuneUntil = 0;
 
 /* Stats can never go below 0 or above 100. Money is separate —
    it has no 100 ceiling, it just can't go negative. */
@@ -63,6 +73,22 @@ function advanceDay() {
     gameState.day += 1;
 }
 
+/** Call once per day. Returns a bonus object if a streak milestone was just hit, else null. */
+function updateStreak() {
+    const stable = gameState.health >= 30 && gameState.sanity >= 30 &&
+                   gameState.energy >= 30 && gameState.academics >= 30;
+
+    gameState.streak = stable ? gameState.streak + 1 : 0;
+
+    const MILESTONES = { 3: 200, 5: 400, 7: 700 };
+    if (MILESTONES[gameState.streak]) {
+        const reward = MILESTONES[gameState.streak];
+        gameState.money += reward;
+        return { streak: gameState.streak, reward };
+    }
+    return null;
+}
+
 /** Returns an ending object if the run is over, otherwise null. */
 function checkGameOver() {
     if (gameState.health <= 0)    return { title: 'Health Failure',    text: 'You pushed too hard, for too long. Your body finally said no.' };
@@ -80,6 +106,33 @@ function statePayload() {
         academics: gameState.academics,
         money:     gameState.money,
         day:       gameState.day,
-        memories:  gameState.memories
+        memories:  gameState.memories,
+        performance: performanceSnapshot()
     };
+}
+
+/** A short read on how the player is currently doing — sent to the LLM so
+    event difficulty/tone can adapt (see server.js's performance instructions). */
+function performanceSnapshot() {
+    if (gameState.combo >= 4) return 'on a hot streak, doing very well';
+    if (gameState.combo >= 2) return 'doing solidly, a couple good calls in a row';
+    if (gameState.streak === 0 && gameState.score > 0) return 'struggling, recently slipped up';
+    return 'steady, nothing dramatic either way';
+}
+
+/* ===================== HIGH SCORE (persists across runs) ===================== */
+
+function loadHighScore() {
+    try { return parseInt(localStorage.getItem('deadline-highscore') || '0', 10); }
+    catch (e) { return 0; }
+}
+
+/** Returns true if this run just beat the saved high score. */
+function saveHighScoreIfBeaten() {
+    const current = loadHighScore();
+    if (gameState.score > current) {
+        try { localStorage.setItem('deadline-highscore', String(gameState.score)); } catch (e) {}
+        return true;
+    }
+    return false;
 }

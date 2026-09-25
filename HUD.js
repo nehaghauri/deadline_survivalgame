@@ -21,6 +21,9 @@ function buildHUD() {
 
     hud.innerHTML = `
         <div class="hud-day" id="hud-day">Day 1</div>
+        <div class="hud-day" id="hud-score" style="color:#ffd24a; font-weight:700;"></div>
+        <div class="hud-day" id="hud-streak" style="color:#ff9d4a;"></div>
+        <div class="hud-day" id="hud-rivalry" style="color:#9dc4ff;"></div>
         <div class="hud-bars">
             ${HUD_STATS.map(s => `
                 <div class="hud-stat" id="hud-stat-${s.key}">
@@ -42,6 +45,11 @@ function buildHUD() {
 /** Repaints the HUD from gameState. Safe to call any time. */
 function updateHUD() {
     document.getElementById('hud-day').textContent = `Day ${gameState.day}`;
+    document.getElementById('hud-score').textContent = `⭐ ${gameState.score}${gameState.combo >= 2 ? ` (x${(1 + gameState.combo * 0.15).toFixed(1)} combo)` : ''}`;
+    document.getElementById('hud-streak').textContent = gameState.streak >= 2 ? `🔥 ${gameState.streak}-day streak` : '';
+    document.getElementById('hud-rivalry').textContent = (gameState.aiWins + gameState.humanWins > 0)
+        ? `🤖 ${gameState.aiWins} — 🧑 ${gameState.humanWins}`
+        : '';
 
     HUD_STATS.forEach(s => {
         const value = gameState[s.key];

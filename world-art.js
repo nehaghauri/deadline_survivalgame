@@ -1,60 +1,82 @@
 /* ============================================================
-   world-art.js — makes the world look like a place, not boxes.
-   No image assets needed — everything here is drawn with shapes.
+   world-art.js — real tile-based world, using extracted sprites
+   from your downloaded RPG Maker MV tileset instead of shapes.
    Load after state.js, before main.js.
    ============================================================ */
 
 /**
- * Draws one building as a small composition of shapes instead of
- * one flat rectangle: base walls, a roof band, a door, two windows.
- * Returns the wall rectangle — that's the one you collide with.
+ * Draws one building using a real house sprite instead of shapes.
+ * The building's collision box is sized to roughly the base/walls
+ * of the sprite, not its full bounding box (roofs overhang visually
+ * but shouldn't block the player from walking near them).
  */
 function drawBuilding(scene, b) {
-    const roofHeight = 26;
+    const sprite = scene.add.image(b.x, b.y, b.textureKey);
+    sprite.setDepth(b.y);   // taller buildings lower on screen draw in front — cheap depth sort
 
-    // Roof — a darker band across the top of the building.
-    scene.add.rectangle(b.x, b.y - b.h / 2 - roofHeight / 2 + 4, b.w + 16, roofHeight, shade(b.color, -40));
+    // Collision body: a rectangle narrower than the sprite, covering
+    // roughly the walls/base, not the roof overhang.
+    const collideW = sprite.width * 0.7;
+    const collideH = sprite.height * 0.45;
+    const collideY = b.y + sprite.height * 0.15;   // shifted down toward the base
 
-    // Walls — the actual building body (this is what the player collides with).
-    const wall = scene.add.rectangle(b.x, b.y, b.w, b.h, b.color);
+    const wall = scene.add.rectangle(b.x, collideY, collideW, collideH, 0x000000, 0);
     scene.physics.add.existing(wall, true);
 
-    // Windows — two small squares near the top of the wall.
-    const winY = b.y - b.h / 2 + 34;
-    scene.add.rectangle(b.x - b.w / 4, winY, 22, 22, 0xfff4d6, 0.85);
-    scene.add.rectangle(b.x + b.w / 4, winY, 22, 22, 0xfff4d6, 0.85);
-
-    // Door — brown rectangle at the bottom center.
-    scene.add.rectangle(b.x, b.y + b.h / 2 - 24, 34, 48, 0x4a3324);
-
-    // Name label floating above the roof.
-    scene.add.text(b.x, b.y - b.h / 2 - roofHeight - 14, b.name, {
+    // Name label above the roof.
+    scene.add.text(b.x, b.y - sprite.height / 2 - 12, b.name, {
         fontFamily: 'sans-serif', fontSize: '14px', color: '#f2eefb', fontStyle: 'bold'
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setDepth(9999);
 
     return wall;
 }
 
-/** Darkens or lightens a hex color by a percent (-100 to 100). */
-function shade(hex, percent) {
-    const r = (hex >> 16) & 0xff, g = (hex >> 8) & 0xff, b = hex & 0xff;
-    const adjust = c => Math.max(0, Math.min(255, Math.round(c + (percent / 100) * 255)));
-    return (adjust(r) << 16) | (adjust(g) << 8) | adjust(b);
-}
-
-/** Ground: a base grass color plus a lighter dirt path connecting the buildings. */
+/** Ground: tiled grass + path, plus flower beds, signposts, rocks, and trees placed like an actual campus. */
 function drawGround(scene, worldWidth, worldHeight, buildings) {
-    scene.add.rectangle(worldWidth / 2, worldHeight / 2, worldWidth, worldHeight, 0x263a2e);
+    scene.add.tileSprite(worldWidth / 2, worldHeight / 2, worldWidth, worldHeight, 'grass-tile');
 
-    // Faint scattered dots for grass texture — cheap, but reads as "not empty."
-    for (let i = 0; i < 140; i++) {
-        const x = Phaser.Math.Between(0, worldWidth);
-        const y = Phaser.Math.Between(0, worldHeight);
-        scene.add.circle(x, y, 2, 0x2f4a3a, 0.6);
+    const midX = worldWidth / 2, midY = worldHeight / 2;
+    scene.add.tileSprite(midX, midY, worldWidth * 0.9, 60, 'path-tile');
+    scene.add.tileSprite(midX, midY, 60, worldHeight * 0.9, 'path-tile');
+
+    // Flower beds framing each building's entrance — two per building, either side of the door.
+    buildings.forEach(b => {
+        const doorY = b.y + b.h / 2 + 10;
+        const flowerKey = Phaser.Math.Between(0, 1) === 0 ? 'flower-pink' : 'flower-blue';
+        placeProp(scene, flowerKey, b.x - 46, doorY);
+        placeProp(scene, flowerKey, b.x + 46, doorY);
+    });
+
+    // Signposts near the crossroads — the natural spot for campus signage.
+    placeProp(scene, 'signpost', midX - 90, midY - 90);
+    placeProp(scene, 'signpost', midX + 90, midY + 90);
+
+    // Rocks as sparse garden accents, kept away from paths/buildings.
+    for (let i = 0; i < 10; i++) {
+        const x = Phaser.Math.Between(60, worldWidth - 60);
+        const y = Phaser.Math.Between(60, worldHeight - 60);
+        if (tooClose(x, y, midX, midY, buildings)) continue;
+        placeProp(scene, Phaser.Math.Between(0, 1) === 0 ? 'rock-small' : 'rock-cluster', x, y);
     }
 
-    // Dirt path: a plus-shape through the middle of the world, connecting the four corners.
-    const midX = worldWidth / 2, midY = worldHeight / 2;
-    scene.add.rectangle(midX, midY, worldWidth * 0.9, 60, 0x8a7355, 0.9);
-    scene.add.rectangle(midX, midY, 60, worldHeight * 0.9, 0x8a7355, 0.9);
+    // Trees/bushes, same scatter as before.
+    for (let i = 0; i < 34; i++) {
+        const x = Phaser.Math.Between(60, worldWidth - 60);
+        const y = Phaser.Math.Between(60, worldHeight - 60);
+        if (tooClose(x, y, midX, midY, buildings)) continue;
+
+        const key = Phaser.Math.Between(0, 2) === 0 ? 'bush-prop' : 'tree-prop';
+        placeProp(scene, key, x, y);
+    }
+}
+
+function tooClose(x, y, midX, midY, buildings) {
+    const nearPath = Math.abs(x - midX) < 80 || Math.abs(y - midY) < 80;
+    const nearBuilding = buildings.some(b => Math.abs(x - b.x) < b.w && Math.abs(y - b.y) < b.h);
+    return nearPath || nearBuilding;
+}
+
+function placeProp(scene, key, x, y) {
+    const prop = scene.add.image(x, y, key);
+    prop.setDepth(y - 1);   // same depth-sort trick as buildings/player
 }
